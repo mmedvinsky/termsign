@@ -42,8 +42,12 @@ class UserTestCase(TestCase):
          print('')
     
     def test_ClientReg(self) :
-        t = TermSign("7813628736487236487236482")
+        t = TermSign("7813628736487236487236482", '/var/tmp/termsign')
         client = Client(name='Client1')
-        t.registerClient(client)
+        cli = t.registerClient(client)
+        user = User(clientId=cli.id, name='test1', password='111')
+        t.registerUser(cli, user)
+        
+        
         
         

@@ -10,14 +10,20 @@ from Crypto.Hash import SHA256
 from Crypto.Cipher import AES
 from datetime import datetime, timedelta
 import boto3
-
+from services.gitdam import GDAM
 ''' 
   TermSign API.  All functions for termsign will be there
 '''  
 class TermSign(object):
-    def __init__(self, encKey):
+    def __init__(self, encKey, baseDir):
+        
+        logging.info('I_StartingTermSign %s'.format(baseDir))
+
         self.encKey = encKey
         self.awsCodeCommit = boto3.client('codecommit')
+        self.baseDir = baseDir
+        
+        
         
     def check_password(self, clear_password, password_hash):
         return SHA256.new(clear_password).hexdigest() == password_hash
@@ -43,29 +49,39 @@ class TermSign(object):
         client.apikey = uuid.uuid4()
         cli = Client.objects.create(id=str(uuid.uuid4()), apikey=str(uuid.uuid4()), name=client.name)
         response = self.awsCodeCommit.create_repository(repositoryName=str(cli.id), repositoryDescription=cli.name)
-        cli.sshurl = response.cloneUrlSsh
-        cli.save()
+        cli.sshurl = response['repositoryMetadata']['cloneUrlSsh']
+        cli.apikey = uuid.uuid4();
+        cli.save()  
+
+        logging.info('I_RegisterClient %s %s'.format(cli.id, cli.sshurl))
+        
+        gdam = GDAM(str(cli.apikey), self.baseDir, str(cli.id), cli.sshurl)
+        gdam.initClient()
         return cli
+
 #
 # Register new User.
 #
     def registerUser(self, client, user) :
-        cli = self.getClientById()
+        cli = self.getClientById(str(client.id))
         if not cli :
            logging.error('E_NoClient')
            raise ValueError('E_NoClient')
-        return User.objects.create(id=uuid.uuid4(), clientId=cli.id, name=user.name, password=user.password)
+        u = User.objects.create(id=uuid.uuid4(), clientId=cli.id, name=user.name, password=user.password)
+        gdam = GDAM(str(cli.apikey), self.baseDir, str(cli.id), cli.sshurl)
+        gdam.initUser(u)
+
 #
 # Lookup new Client.
 #
     def getClientById(self, clientId) :
-        return Client.objects.get(id=uuid.uuid4())
+        return Client.objects.get(id=clientId)
         
     def getClientByApiKey(self, akey) :
         return Client.objects.get(apikey=akey)
         
     def getClientWithCheck(self, clientId, a) :
-        return Client.objects.get(id=uuid.uuid4(), apikey=a)
+        return Client.objects.get(id=clientId, apikey=a)
         
 # Login into TermSign enviornment 
 # and get session

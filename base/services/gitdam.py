@@ -2,7 +2,6 @@ from git import Repo
 from enum import Enum
 import os
 import string
-
 '''
 Created on Mar 21, 2017
 @author: mikem
@@ -20,32 +19,67 @@ API that created and manages content files
 through git
 '''  
 class GDAM(object):
-    def __init__(self, akey, root, user, rname, rmoniker, stream=STREAMS.work):
+    #
+    # Constructor
+    #
+    def __init__(self, akey, root, rname, rmoniker):
         self.apikey = akey
         self.folder = root
-        self.user = user
         self.rname = rname
         self.rmoniker = rmoniker
-        self.stream = STREAMS.work
-        self.user_location = os.path.join(self.folder, self.apikey, 'users', self.user)
-        rloc = os.path.join(self.user_location, self.rname)
+
+    #
+    # Constructor
+    #
+    def initClient(self):        
+        self.master_location = os.path.join(self.folder, self.apikey, STREAMS.prod.value)
         # check the apikey folder first if does not exist create one
         f = os.path.join(self.folder, self.apikey)
         if not os.path.isdir(f) :
             os.mkdir(f)
-            os.mkdir(os.path.join(f, 'users'))
-            os.mkdir(self.user_location)
+            os.mkdir(os.path.join(f, STREAMS.prod.value))
             self.repo = Repo()
-            self.repo.git.clone(rmoniker, "-q", rloc)
+            self.repo.git.clone(self.rmoniker, "-q", self.master_location)
+        elif  not os.path.isdir(self.master_location) :
+            os.mkdir(self.master_location)
+            self.repo = Repo()
+            self.repo.git.clone(self.rmoniker, "-q", self.master_location)
+           
+           
+        self.repo = Repo(self.master_location)            
+        fname = os.path.join(self.master_location, 'README')
+        f = open(fname,'w')
+        f.write(self.rname)
+        f.close()
+        
+        self.repo.git.add(fname)       
+        self.repo.git.commit("-m", fname, "--all")
+        self.repo.git.push("origin", STREAMS.prod.value)
+            
+        self.repo.git.checkout(STREAMS.prod.value) 
+        self.repo.git.pull('origin', STREAMS.prod.value)        
+
+    #
+    # Constructor
+    #
+    def initUser(self, user):
+        self.user_location = os.path.join(self.folder, self.apikey, 'users', str(user.id))
+        rloc = os.path.join(self.user_location, self.rname)
+        # check the apikey folder first if does not exist create one
+        f = os.path.join(self.folder, self.apikey)
+        if not os.path.isdir(f) :
+            raise ValueError('E_NoClientInit', user.clientId)
         elif  not os.path.isdir(self.user_location) :
-            os.mkdir(self.user_location)
+            os.makedirs(self.user_location)
             self.repo = Repo()
-            self.repo.git.clone(rmoniker, "-q", rloc)
-        else :    
-            self.repo = Repo(rloc)
+            self.repo.git.clone(self.rmoniker, "-q", rloc)
+   
+        self.repo = Repo(rloc)
+        self.repo.git.branch(STREAMS.work.value)
+        self.repo.git.branch(STREAMS.stage.value)
+        self.repo.git.branch(STREAMS.test.value)
         
         self.repo.git.checkout(STREAMS.work.value) 
-        self.repo.git.pull('origin', STREAMS.work.value)        
     
     '''
      Returns top level commit log hex value
