@@ -47,7 +47,4 @@ class UserTestCase(TestCase):
         cli = t.registerClient(client)
         user = User(clientId=cli.id, name='test1', password='111')
         t.registerUser(cli, user)
-        
-        
-        
-        
+

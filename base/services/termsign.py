@@ -5,16 +5,21 @@ import base64
 import uuid
 from services.models import User
 from services.models import Client
+from services.models import Document
 import logging
 from Crypto.Hash import SHA256
 from Crypto.Cipher import AES
 from datetime import datetime, timedelta
 import boto3
 from services.gitdam import GDAM
+
 ''' 
   TermSign API.  All functions for termsign will be there
 '''  
 class TermSign(object):
+    
+    termsignInstance = None
+    
     def __init__(self, encKey, baseDir):
         
         logging.info('I_StartingTermSign %s'.format(baseDir))
@@ -22,8 +27,13 @@ class TermSign(object):
         self.encKey = encKey
         self.awsCodeCommit = boto3.client('codecommit')
         self.baseDir = baseDir
-        
-        
+    
+    @staticmethod
+    def instance(encKey = None, baseDir = None):
+        if (TermSign.termsignInstance == None):
+            assert encKey != None and baseDir != None
+            TermSign.termsignInstance = TermSign(encKey, baseDir)
+        return TermSign.termsignInstance
         
     def check_password(self, clear_password, password_hash):
         return SHA256.new(clear_password).hexdigest() == password_hash
@@ -37,7 +47,7 @@ class TermSign(object):
          aes = AES.new(self.encKey, AES.MODE_CBC)
          return base64.b64encode(aes.encrypt(sess))
 
-    def descrypt_session(self, sess) :
+    def decrypt_session(self, sess) :
          aes = AES.new(self.encKey, AES.MODE_CBC)
          return aes.decrypt(base64.b64decode(sess))
 
@@ -67,9 +77,22 @@ class TermSign(object):
         if not cli :
            logging.error('E_NoClient')
            raise ValueError('E_NoClient')
-        u = User.objects.create(id=uuid.uuid4(), clientId=cli.id, name=user.name, password=user.password)
+        u = User.objects.create(id=uuid.uuid4(), clientId=cli.id, name=user.name, email=user.email, password=user.password)
         gdam = GDAM(str(cli.apikey), self.baseDir, str(cli.id), cli.sshurl)
         gdam.initUser(u)
+        return u
+
+
+#
+# Create document
+#
+    def createDocument(self, client, nm, doc) :
+        cli = self.getClientById(str(client.id))
+        doc = Document.objects.create(id=str(uuid.uuid4()), clientId=client.id, name=nm)
+        gdam = GDAM(str(cli.apikey), self.baseDir, str(cli.id), cli.sshurl)
+        vid = gdam.createDocument(doc, doc.id);
+        return doc
+
 
 #
 # Lookup new Client.

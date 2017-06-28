@@ -14,6 +14,8 @@ class STREAMS(Enum):
     prod='master'
     
 
+BASEREPOID = "f8bad185-45c3-43f1-a580-492f73befcbf"
+
 ''' 
 API that created and manages content files
 through git
@@ -27,7 +29,8 @@ class GDAM(object):
         self.folder = root
         self.rname = rname
         self.rmoniker = rmoniker
-
+        self.baseRepoLoc = os.path.join(self.folder, BASEREPOID)
+        
     #
     # Constructor
     #
@@ -38,11 +41,11 @@ class GDAM(object):
         if not os.path.isdir(f) :
             os.mkdir(f)
             os.mkdir(os.path.join(f, STREAMS.prod.value))
-            self.repo = Repo()
+            self.repo = Repo(self.baseRepoLoc)
             self.repo.git.clone(self.rmoniker, "-q", self.master_location)
         elif  not os.path.isdir(self.master_location) :
             os.mkdir(self.master_location)
-            self.repo = Repo()
+            self.repo = Repo(self.baseRepoLoc)
             self.repo.git.clone(self.rmoniker, "-q", self.master_location)
            
            
@@ -71,7 +74,7 @@ class GDAM(object):
             raise ValueError('E_NoClientInit', user.clientId)
         elif  not os.path.isdir(self.user_location) :
             os.makedirs(self.user_location)
-            self.repo = Repo()
+            self.repo = Repo(self.baseRepoLoc)
             self.repo.git.clone(self.rmoniker, "-q", rloc)
    
         self.repo = Repo(rloc)

@@ -18,7 +18,8 @@ from django.conf.urls import url, include
 from django.contrib import admin
 
 urlpatterns = [
-    url(r'^services/(?P<uid>[0-9]+)$', views.ulas),
+    url(r'^termsign/services/v1/client$', views.clientWrites),
+    url(r'^termsign/services/v1/client/(?P<cid>[A-Za-z0-9\-]+)$', views.clientRead),
     url(r'^admin/', admin.site.urls),
     url(r'^api-auth/', include('rest_framework.urls', namespace='rest_framework'))
 ]
